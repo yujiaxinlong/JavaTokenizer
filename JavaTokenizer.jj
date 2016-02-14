@@ -1,0 +1,423 @@
+/* Copyright (c) 2006, Sun Microsystems, Inc.
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ *     * Redistributions of source code must retain the above copyright notice,
+ *       this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Sun Microsystems, Inc. nor the names of its
+ *       contributors may be used to endorse or promote products derived from
+ *       this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+
+options {
+  JAVA_UNICODE_ESCAPE = true;
+}
+
+PARSER_BEGIN(JavaParser)
+
+public class JavaParser {
+
+  public static void main(String args[]) {
+    JavaParser parser;
+    if (args.length == 0) {
+      System.out.println("Java Parser Version 1.0.2:  Reading from standard input . . .");
+      parser = new JavaParser(System.in);
+    } else if (args.length == 1) {
+      System.out.println("Java Parser Version 1.0.2:  Reading from file " + args[0] + " . . .");
+      try {
+        parser = new JavaParser(new java.io.FileInputStream(args[0]));
+      } catch (java.io.FileNotFoundException e) {
+        System.out.println("Java Parser Version 1.0.2:  File " + args[0] + " not found.");
+        return;
+      }
+    } else {
+      System.out.println("Java Parser Version 1.0.2:  Usage is one of:");
+      System.out.println("         java JavaParser < inputfile");
+      System.out.println("OR");
+      System.out.println("         java JavaParser inputfile");
+      return;
+    }
+    try {
+      parser.CompilationUnit();
+      System.out.println("Java Parser Version 1.0.2:  Java program parsed successfully.");
+    } catch (ParseException e) {
+      System.out.println("Java Parser Version 1.0.2:  Encountered errors during parse.");
+    }
+  }
+
+}
+
+PARSER_END(JavaParser)
+
+
+/* WHITE SPACE */
+
+SKIP :
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+| "\f"
+}
+
+/* COMMENTS */
+
+MORE :
+{
+  "//" : IN_SINGLE_LINE_COMMENT
+|
+  <"/**" ~["/"]> { input_stream.backup(1); } : IN_FORMAL_COMMENT
+|
+  "/*" : IN_MULTI_LINE_COMMENT
+}
+
+<IN_SINGLE_LINE_COMMENT>
+SPECIAL_TOKEN :
+{
+  <SINGLE_LINE_COMMENT: "\n" | "\r" | "\r\n" > : DEFAULT
+}
+
+<IN_SINGLE_LINE_COMMENT>
+MORE :
+{
+  < ~[] >
+}
+
+<IN_FORMAL_COMMENT>
+SPECIAL_TOKEN :
+{
+  <FORMAL_COMMENT: "*/" > : DEFAULT
+}
+
+<IN_MULTI_LINE_COMMENT>
+SPECIAL_TOKEN :
+{
+  <MULTI_LINE_COMMENT: "*/" > : DEFAULT
+}
+
+<IN_FORMAL_COMMENT,IN_MULTI_LINE_COMMENT>
+MORE :
+{
+  < ~[] >
+}
+
+/* RESERVED WORDS AND LITERALS */
+
+MORE :
+{
+  "import" : IN_LINE
+| "package" : IN_LINE
+} 
+
+<IN_LINE>
+SKIP :
+{
+  <IMPORT_LINE: "\n" | "\r" | "\r\n" > : DEFAULT
+}
+<IN_LINE>
+MORE:
+{
+  < ~[] >
+}
+TOKEN :
+{
+  < ABSTRACT: "abstract" >
+| < BOOLEAN: "boolean" >
+| < BREAK: "break" >
+| < BYTE: "byte" >
+| < CASE: "case" >
+| < CATCH: "catch" >
+| < CHAR: "char" >
+| < CLASS: "class" >
+| < CONST: "const" >
+| < CONTINUE: "continue" >
+| < _DEFAULT: "default" >
+| < DO: "do" >
+| < DOUBLE: "double" >
+| < ELSE: "else" >
+| < EXTENDS: "extends" >
+| < FALSE: "false" >
+| < FINAL: "final" >
+| < FINALLY: "finally" >
+| < FLOAT: "float" >
+| < FOR: "for" >
+| < GOTO: "goto" >
+| < IF: "if" >
+| < IMPLEMENTS: "implements" >
+| < INSTANCEOF: "instanceof" >
+| < INT: "int" >
+| < INTERFACE: "interface" >
+| < LONG: "long" >
+| < NATIVE: "native" >
+| < NEW: "new" >
+| < NULL: "null" >
+| < PRIVATE: "private" >
+| < PROTECTED: "protected" >
+| < PUBLIC: "public" >
+| < RETURN: "return" >
+| < SHORT: "short" >
+| < STATIC: "static" >
+| < SUPER: "super" >
+| < SWITCH: "switch" >
+| < SYNCHRONIZED: "synchronized" >
+| < THIS: "this" >
+| < THROW: "throw" >
+| < THROWS: "throws" >
+| < TRANSIENT: "transient" >
+| < TRUE: "true" >
+| < TRY: "try" >
+| < VOID: "void" >
+| < VOLATILE: "volatile" >
+| < WHILE: "while" >
+}
+
+/* LITERALS */
+
+SKIP :
+{
+  < INTEGER_LITERAL:
+        <DECIMAL_LITERAL> (["l","L"])?
+      | <HEX_LITERAL> (["l","L"])?
+      | <OCTAL_LITERAL> (["l","L"])?
+  >
+|
+  < #DECIMAL_LITERAL: ["1"-"9"] (["0"-"9"])* >
+|
+  < #HEX_LITERAL: "0" ["x","X"] (["0"-"9","a"-"f","A"-"F"])+ >
+|
+  < #OCTAL_LITERAL: "0" (["0"-"7"])* >
+|
+  < FLOATING_POINT_LITERAL:
+        (["0"-"9"])+ "." (["0"-"9"])* (<EXPONENT>)? (["f","F","d","D"])?
+      | "." (["0"-"9"])+ (<EXPONENT>)? (["f","F","d","D"])?
+      | (["0"-"9"])+ <EXPONENT> (["f","F","d","D"])?
+      | (["0"-"9"])+ (<EXPONENT>)? ["f","F","d","D"]
+  >
+|
+  < #EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+ >
+|
+  < CHARACTER_LITERAL:
+      "'"
+      (   (~["'","\\","\n","\r"])
+        | ("\\"
+            ( ["n","t","b","r","f","\\","'","\""]
+            | ["0"-"7"] ( ["0"-"7"] )?
+            | ["0"-"3"] ["0"-"7"] ["0"-"7"]
+            )
+          )
+      )
+      "'"
+  >
+|
+  < STRING_LITERAL:
+      "\""
+      (   (~["\"","\\","\n","\r"])
+        | ("\\"
+            ( ["n","t","b","r","f","\\","'","\""]
+            | ["0"-"7"] ( ["0"-"7"] )?
+            | ["0"-"3"] ["0"-"7"] ["0"-"7"]
+            )
+          )
+      )*
+      "\""
+  >
+}
+
+/* IDENTIFIERS */
+
+TOKEN :
+{
+  < IDENTIFIER: <LETTER> (<LETTER>|<DIGIT>)* >
+|
+  < #LETTER:
+      [
+       "\u0024",
+       "\u0041"-"\u005a",
+       "\u005f",
+       "\u0061"-"\u007a",
+       "\u00c0"-"\u00d6",
+       "\u00d8"-"\u00f6",
+       "\u00f8"-"\u00ff",
+       "\u0100"-"\u1fff",
+       "\u3040"-"\u318f",
+       "\u3300"-"\u337f",
+       "\u3400"-"\u3d2d",
+       "\u4e00"-"\u9fff",
+       "\uf900"-"\ufaff"
+      ]
+  >
+|
+  < #DIGIT:
+      [
+       "\u0030"-"\u0039",
+       "\u0660"-"\u0669",
+       "\u06f0"-"\u06f9",
+       "\u0966"-"\u096f",
+       "\u09e6"-"\u09ef",
+       "\u0a66"-"\u0a6f",
+       "\u0ae6"-"\u0aef",
+       "\u0b66"-"\u0b6f",
+       "\u0be7"-"\u0bef",
+       "\u0c66"-"\u0c6f",
+       "\u0ce6"-"\u0cef",
+       "\u0d66"-"\u0d6f",
+       "\u0e50"-"\u0e59",
+       "\u0ed0"-"\u0ed9",
+       "\u1040"-"\u1049"
+      ]
+  >
+}
+
+SKIP : /* SEPARATORS */
+{
+  < LPAREN: "(" >
+| < RPAREN: ")" >
+| < LBRACE: "{" >
+| < RBRACE: "}" >
+| < LBRACKET: "[" >
+| < RBRACKET: "]" >
+| < SEMICOLON: ";" >
+| < COMMA: "," >
+| < DOT: "." >
+| < AT: "@">
+}
+
+TOKEN : /* OPERATORS */
+{
+  < ASSIGN: "=" >
+| < GT: ">" >
+| < LT: "<" >
+| < BANG: "!" >
+| < TILDE: "~" >
+| < HOOK: "?" >
+| < COLON: ":" >
+| < EQ: "==" >
+| < LE: "<=" >
+| < GE: ">=" >
+| < NE: "!=" >
+| < SC_OR: "||" >
+| < SC_AND: "&&" >
+| < INCR: "++" >
+| < DECR: "--" >
+| < PLUS: "+" >
+| < MINUS: "-" >
+| < STAR: "*" >
+| < SLASH: "/" >
+| < BIT_AND: "&" >
+| < BIT_OR: "|" >
+| < XOR: "^" >
+| < REM: "%" >
+| < LSHIFT: "<<" >
+| < RSIGNEDSHIFT: ">>" >
+| < RUNSIGNEDSHIFT: ">>>" >
+| < PLUSASSIGN: "+=" >
+| < MINUSASSIGN: "-=" >
+| < STARASSIGN: "*=" >
+| < SLASHASSIGN: "/=" >
+| < ANDASSIGN: "&=" >
+| < ORASSIGN: "|=" >
+| < XORASSIGN: "^=" >
+| < REMASSIGN: "%=" >
+| < LSHIFTASSIGN: "<<=" >
+| < RSIGNEDSHIFTASSIGN: ">>=" >
+| < RUNSIGNEDSHIFTASSIGN: ">>>=" >
+}
+
+
+/*****************************************
+ * THE JAVA LANGUAGE GRAMMAR STARTS HERE *
+ *****************************************/
+
+/*
+ * Program structuring syntax follows.
+ */
+
+
+void CompilationUnit() :
+{}
+{
+
+  <EOF>
+}
+
+
+
+
+
+/*
+ * Declaration syntax follows.
+ */
+
+
+
+// This production is to determine lookahead only.
+
+
+/*
+ * Type, name and expression syntax follows.
+ */
+
+/*
+ * A lookahead of 2 is required below since "Name" can be followed
+ * by a ".*" when used in the context of an "ImportDeclaration".
+ */
+
+
+
+/*
+ * Expression syntax follows.
+ */
+
+
+
+// This production is to determine lookahead only.  The LOOKAHEAD specifications
+// below are not used, but they are there just to indicate that we know about
+// this.
+
+/*
+ * The second LOOKAHEAD specification below is to parse to PrimarySuffix
+ * if there is an expression between the "[...]".
+ */
+
+/*
+ * Statement syntax follows.
+ */
+
+
+
+
+/*
+ * The last expansion of this production accepts more than the legal
+ * Java expansions for StatementExpression.
+ */
+
+/*
+ * The disambiguating algorithm of JavaCC automatically binds dangling
+ * else's to the innermost if statement.  The LOOKAHEAD specification
+ * is to tell JavaCC that we know what we are doing.
+ */
+
+/*
+ * Semantic check required here to make sure that at least one
+ * finally/catch is present.
+ */
+
